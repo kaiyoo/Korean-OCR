@@ -1,0 +1,55 @@
+[Set up]
+(python version: 3.8.18)
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install paddlepaddle-gpu==2.6.1 -f https://www.paddlepaddle.org.cn/whl/linux/mkl/avx/stable.html
+
+
+학습실행 전에 아래 스크립트 실행해서 만들어질 폴더구조:
+Project/
+├── model/
+│   └── korean_PP-OCRv3_rec_train/
+│        ├── best_accuracy.pdopt
+│        ├── best_accuracy.pdparams
+│        ├── best_accuracy.states
+│        ├── config.yml
+│        └── customized_korean_dict.txt
+├── data/
+│   └── processed/
+│        ├── train/
+│        │    ├── images/
+│        │    └── train_label.txt
+│        └── val/
+│             ├── images/
+│             └── val_label.txt
+
+1. [원고지 격자 합성 데이터 만들기]: data/processed/train/images/, data/processed/train/train_label.txt, 
+python synthesize_data.py
+
+1.1[training 전에 빠른 data 로드 위해 numpy cache 파일 만들고 시작]
+python generate_cache.py -c ./model/korean_PP-OCRv3_rec_train/config.yml
+
+2. [Custom 한글 사전 만들기]: 원래 3687자 => 802자 (데이터셋에 있는 글자로만)
+python create_customized_dict.py
+=>  model/korean_PP-OCRv3_rec_train/customized_korean_dict.txt
+
+3. [config file 수정]: data 및 pretrained model 경로 수정, image shape, batch size 등
+korean_PP-OCRv3_rec_train/config.yml
+
+4. [학습 실행]:
+python tools/train.py -c ./model/korean_PP-OCRv3_rec_train/config.yml
+
+
+
+[코드 수정한 부분]:
+train.py: freeze 부분 (지금은 안씀)
+tools/program.py: eval prediction 샘플 출력되게 수정
+ppocr/utils/logging.py: 터미널 출력 외 train.log 를 파일로 제대로 못써서 수정
+
+[CachedSimpleDataSet 추가]: 데이터 첫 로드시 npy 캐시파일 만들고, 다음부터는 npy 캐시로 로드. 
+ppocr/data/__init__.py
+ppocr/data/simple_dataset.py
+
+[training 전 빠른 data 로드 위해 numpy cache 파일 만들고 시작]
+python generate_cache.py -c ./model/korean_PP-OCRv3_rec_train/config.yml
